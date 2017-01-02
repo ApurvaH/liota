@@ -237,10 +237,7 @@ class SteadyState(State):
             res_uuid = msg["body"]["uuid"]
             return True
 
-        elif msg["type"] == "remove_resource_response":
-            #require_field(msg["body"], "uuid")
-            #require_field(msg, "transactionID")
-            #res_uuid = msg["body"]["uuid"]
+        elif msg["type"] == "remove_resource_response":            
             return True
 
         elif msg["type"] == "action":
