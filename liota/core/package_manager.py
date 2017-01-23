@@ -30,6 +30,7 @@
 #  THE POSSIBILITY OF SUCH DAMAGE.                                            #
 # ----------------------------------------------------------------------------#
 
+import json
 import logging
 import inspect
 import imp
@@ -76,6 +77,7 @@ package_thread = None
 package_lock = None
 package_path = None
 package_messenger_pipe = None
+package_rec = None
 
 # Parse Liota configuration file
 config = ConfigParser.RawConfigParser()
@@ -90,6 +92,9 @@ if fullPath != '':
                 package_messenger_pipe = os.path.abspath(
                     config.get('PKG_CFG', 'pkg_msg_pipe')
                 )
+                package_rec = os.path.abspath(
+                    config.get('PKG_RECORD', 'pkg_rec')
+                )
             except ConfigParser.ParsingError:
                 log.error('Could not parse log config file')
                 exit(-4)
@@ -103,6 +108,7 @@ else:
 
 assert(isinstance(package_path, basestring))
 assert(isinstance(package_messenger_pipe, basestring))
+assert(isinstance(package_rec, basestring))
 
 package_startup_list_path = None
 package_startup_list = []
@@ -194,7 +200,6 @@ class LiotaPackage:
 #---------------------------------------------------------------------------
 # This method calculates SHA-1 checksum of file.
 # May raise IOError upon "open"
-
 
 def sha1sum(path_file):
     sha1 = hashlib.sha1()
@@ -532,6 +537,7 @@ class PackageThread(Thread):
 
     def _package_load(self, file_name, ext_forced=None, check_stack=None):
 
+        global package_rec
         log.debug("Attempting to load package: %s" % file_name)
 
         # Check if specified package is already loaded
@@ -552,7 +558,6 @@ class PackageThread(Thread):
             return None
         log.info("Loaded package file: %s (%s)"
                  % (path_file_ext, sha1.hexdigest()))
-
         #-------------------------------------------------------------------
         # Following sections do these:
         #   1)     from file path  load module,
@@ -627,6 +632,19 @@ class PackageThread(Thread):
         package_record.set_dependencies(dependencies)
         self._packages_loaded[file_name] = package_record
 
+        #Listing currently loaded package for autostart
+        msg = { "packages": [] }
+        for pkg in sorted(self._packages_loaded.keys()):
+            msg["packages"].append(pkg)
+        
+        log.info("Writing information to file for autoloading...")
+            
+        with open(package_rec, "w") as f:
+            log.info("File Opened...")
+            f.write(json.dumps(msg, f, sort_keys = True, indent = 4, ensure_ascii=False))
+        f.close()
+        log.info("File Closed...")
+        
         log.info("Package class from module %s is initialized"
                  % module_loaded.__name__)
         return package_record
@@ -635,7 +653,10 @@ class PackageThread(Thread):
     # This method is called to unload package using its file_name (no ext).
     # Use track_list to keep track of full file name (with ext) when unloading,
     # so reload can always load exactly that same file
+
     def _package_unload(self, file_name, track_list=None):
+
+        global package_rec
         log.debug("Attempting to unload package: %s" % file_name)
 
         # Check if specified package is already loaded
@@ -698,6 +719,21 @@ class PackageThread(Thread):
         del self._packages_loaded[file_name]
 
         log.info("Unloaded package: %s" % file_name)
+
+        #Removing the unloaded package from file
+        msg = {}
+        log.info("Removing the record from file")
+        with open(package_rec, "r+") as f:
+            log.info("File Opened...")
+            msg = json.load(f)
+            msg["packages"].remove(file_name)
+            log.info("Removed from file...")
+            f.seek(0)
+            f.write(json.dumps(msg, f, sort_keys = True, indent = 4, ensure_ascii=False))
+            f.truncate()
+        f.close()
+        log.info("File Closed...")
+        
         return True
 
     def _package_delete(self, file_name):
@@ -817,12 +853,13 @@ class PackageThread(Thread):
                 continue
             if not self._package_load(file_name):
                 list_failed.append(file_name)
-
+            
         if len(list_failed) > 0:
             log.warning("Some packages specified in list failed to load: %s"
                         % " ".join(list_failed))
         else:
             log.info("Batch load successful")
+            
         return len(list_failed) < 1
 
     #-----------------------------------------------------------------------
@@ -1004,8 +1041,8 @@ class PackageThread(Thread):
 
         handler_terminate()
         return True
-
-
+    
+        
 class PackageMessengerThread(Thread):
     """
     PackageMessengerThread does inter-process communication (IPC) to listen
@@ -1134,7 +1171,7 @@ def initialize():
     global package_thread
     if package_thread is None:
         package_thread = PackageThread(name="PackageThread")
-
+    
     # PackageMessengerThread should start last because it triggers actions
     global package_messenger_thread
     if package_messenger_thread is None:

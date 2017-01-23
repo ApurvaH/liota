@@ -102,6 +102,8 @@ setup(
                   'packages/sampleProp.conf',
                   'packages/liotad.py',
                   'packages/liotapkg.sh',
+                  'packages/autostart.py',
+                  'packages/package_list.json',
                   'packages/packages_auto.txt']),
                 (os.path.abspath(os.sep) + '/../etc/liota/packages/examples',
                  ['packages/examples/bike_simulator.py',
