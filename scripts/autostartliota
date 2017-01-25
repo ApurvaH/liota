@@ -1,0 +1,51 @@
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides:          Liota autostart
+# Required-Start:    $all
+# Required-Stop:
+# Default-Start:     2 3 4 5
+# Default-Stop:
+# Short-Description: Autostarts liotad.py and autoloads all the previously loaded packages at reboot.
+### END INIT INFO
+
+. /etc/liota/packages
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+
+do_start() {
+	sudo python /etc/liota/packages/liotad.py &
+	count=0
+	ps aux | egrep "python /etc/liota/packages/liotad.py|python liotad.py" |
+	{
+		while IFS= read -r line
+		do
+			count=$((linecount + 1))
+		done		
+		if [ $count -ge 3 ] 
+		then
+			echo "Liotad started running"
+		else
+			echo "Wait for liotad to start"
+			sleep 30
+		fi
+	}
+	echo "Load packages"
+	sudo python /etc/liota/packages/autostart.py
+}
+
+case "$1" in
+    start)
+	do_start
+        ;;
+    restart|reload|force-reload)
+        echo "Error: argument '$1' not supported" >&2
+        exit 3
+        ;;
+    stop)
+        ;;
+    *)
+        echo "Usage: $0 start|stop" >&2
+        exit 3
+        ;;
+esac
+

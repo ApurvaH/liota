@@ -1,7 +1,7 @@
 import json
 import subprocess
 
-filename = "/etc/liota/packages/package_list.json"
+filename = "/etc/liota/conf/package_list.json"
 scriptpath="/etc/liota/packages/liotapkg.sh"
 
 with open(filename, "r") as fp:
