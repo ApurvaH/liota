@@ -89,7 +89,7 @@ class IotControlCenter(DataCenterComponent):
         """
         if isinstance(entity_obj, Metric):
             # reg_entity_id should be parent's one: not known here yet
-            # will add in creat_relationship(); publish_unit should be done inside
+            # will add in create_relationship(); publish_unit should be done inside
             return RegisteredMetric(entity_obj, self, None)
         else:
             # finally will create a RegisteredEntity
@@ -110,6 +110,7 @@ class IotControlCenter(DataCenterComponent):
                             else:
                                 log.info("Waiting for resource creation")
                                 time.sleep(5)
+                                print "on-r-safe: self._registration: ",self._registration(self.con.next_id(), entity_obj.entity_id, entity_obj.name,entity_obj.entity_type)
                                 self.con.send(
                                     self._registration(self.con.next_id(), entity_obj.entity_id, entity_obj.name,
                                                        entity_obj.entity_type))
@@ -120,6 +121,10 @@ class IotControlCenter(DataCenterComponent):
             self.con.on_receive = on_receive_safe
             thread.daemon = True
             thread.start()
+            print "REG: entity_obj: ",entity_obj
+            print "REG: entity_obj.name: ",entity_obj.name
+            print "REG: entity_obj.entity_id: ",entity_obj.entity_id
+            print "REG: entity_obj.entity_type: ",entity_obj.entity_type
             if entity_obj.entity_type == "EdgeSystem":
                 entity_obj.entity_type = "HelixGateway"
             self.con.send(
@@ -133,14 +138,20 @@ class IotControlCenter(DataCenterComponent):
                 self.store_edge_system_uuid(entity_obj.name, self.reg_entity_id)
             else:
                 self.store_reg_entity_details("Devices", entity_obj.name, self.reg_entity_id)
-            return RegisteredEntity(entity_obj, self, self.reg_entity_id)
+            return RegisteredEntity(entity_obj, self, self.reg_entity_id, entity_obj.entity_type)
 
     def unregister(self, entity_obj):
         """ Unregister the objects
 
         """
         log.info("Unregistering resource with IoTCC {0}".format(entity_obj.ref_entity.name))
-        
+        print "UN: entity_obj: ",entity_obj
+        print "UN: entity_obj.ref_entity: ",entity_obj.ref_entity
+        print "UN: entity_obj.ref_entity.name: ",entity_obj.ref_entity.name
+        print "UN: entity_obj.ref_entity.entity_id: ",entity_obj.ref_entity.entity_id
+        print "UN: entity_obj.ref_dcc: ",entity_obj.ref_dcc
+        print "UN: entity_obj.reg_entity_id: ",entity_obj.reg_entity_id
+    
         def on_receive_safe(msg):
             try:
                 log.debug("Received msg: {0}".format(msg))

@@ -46,7 +46,7 @@ execfile('sampleProp.conf', config)
 # some standard metrics for Linux systems
 # agent classes for different IoT system
 # agent classes for different data center components
-# agent classes for different kinds of of devices, connected to the IoT System
+# agent classes for different kinds of devices, connected to the IoT System
 # we are showing here how to create a representation for a Device in IoTCC but
 # using the notion of RAM (because we have no connected devices yet)
 # agent classes for different kinds of layer 4/5 connections from agent to DCC

@@ -30,14 +30,53 @@
 #  THE POSSIBILITY OF SUCH DAMAGE.                                            #
 # ----------------------------------------------------------------------------#
 
-class RegisteredEntity(object):
+import time
+from liota.dccs.iotcc import IotControlCenter
+from liota.entities.metrics.metric import Metric
+from liota.entities.devices.simulated_device import SimulatedDevice
+from liota.entities.edge_systems.dell5k_edge_system import Dell5KEdgeSystem
+from liota.dcc_comms.websocket_dcc_comms import WebSocketDccComms
+from liota.dccs.dcc import RegistrationFailure
 
-    def __init__(self, ref_entity, ref_dcc, reg_entity_id, reg_entity_type = None):
-        self.ref_entity = ref_entity
-        self.ref_dcc = ref_dcc
-        self.reg_entity_id = reg_entity_id
-        self.reg_entity_type = reg_entity_type
-        self.parent = None
+# getting values from conf file
+config = {}
+execfile('sampleProp.conf', config)
 
-    def set_properties(self, properties):
-        self.ref_dcc.set_properties(self, properties)
+# The program illustrates the ease of use Liota brings to IoT application developers.
+
+if __name__ == '__main__':
+
+
+    # create a data center object, IoTCC in this case, using websocket as a transport layer
+    # this object encapsulates the formats and protocols neccessary for the agent to interact with the dcc
+    # UID/PASS login for now.
+    iotcc = IotControlCenter(config['IotCCUID'], config['IotCCPassword'],
+                             WebSocketDccComms(url=config['WebSocketUrl']))
+
+    try:
+        # create a System object encapsulating the particulars of a IoT System
+        # argument is the name of this IoT System
+        edge_system = Dell5KEdgeSystem(config['EdgeSystemName'])
+        
+        # resister the IoT System with the IoTCC instance
+        # this call creates a representation (a Resource) in IoTCC for this IoT System with the name given
+        reg_edge_system = iotcc.register(edge_system)
+
+        # Here we are showing how to create a device object, registering it in IoTCC, and setting properties on it
+        # Since there are no attached devices are as simulating one by considering RAM as separate from the IoT System
+        # The agent makes possible many different data models
+        # arguments:
+        #        device name
+        #        Read or Write
+        #        another Resource in IoTCC of which the should be the child of a parent-child relationship among Resources
+        ram_device = SimulatedDevice(config['DeviceName'], "Device-RAM")
+        reg_ram_device = iotcc.register(ram_device)
+        iotcc.create_relationship(reg_edge_system, reg_ram_device)
+
+	time.sleep(100)
+
+        #Unregistration of the edge system
+        iotcc.unregister(reg_ram_device)
+
+    except RegistrationFailure:
+        print "Registration to IOTCC failed"
